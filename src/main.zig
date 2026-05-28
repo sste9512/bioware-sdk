@@ -45,7 +45,7 @@ pub fn main(init: std.process.Init) !void {
     const erf_path = try std.fs.path.join(std.heap.page_allocator, &.{ kotor_root_path, "/TexturePacks/swpc_tex_gui.erf" });
     defer std.heap.page_allocator.free(erf_path);
 
-    const erfBytes = try readFileBytes(std.heap.page_allocator, erf_path, io);pdftotext -layout '/home/steveo/Downloads/OneDrive_2_5-21-2026/Bioware_Aurora_Store_Format.pdf' /tmp/store-spec.txt && wc -l /tmp/store-spec.txt
+    const erfBytes = try readFileBytes(std.heap.page_allocator, erf_path, io);
     defer std.heap.page_allocator.free(erfBytes);
 
     var erf = ErfFile.init(std.heap.page_allocator, .ERF);

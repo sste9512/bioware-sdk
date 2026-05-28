@@ -44,6 +44,10 @@ pub const TalkTable = tlk.TalkTable;
 pub const TalkTableEntry = tlk.TalkTableEntry;
 pub const TalkTableFlags = tlk.Flags;
 
+pub const loc_string = @import("loc_string.zig");
+pub const LocStringGender = loc_string.Gender;
+pub const LocStringFetchResult = loc_string.FetchResult;
+
 pub const ssf = @import("ssf.zig");
 pub const SoundSet = ssf.SoundSet;
 pub const SoundEntry = ssf.SoundEntry;
@@ -76,5 +80,44 @@ pub const PaletteNode = itp.PaletteNode;
 pub const BranchNode = itp.BranchNode;
 pub const CategoryNode = itp.CategoryNode;
 pub const BlueprintNode = itp.BlueprintNode;
+
+pub const encounter = @import("encounter.zig");
+pub const UteFile = encounter.UteFile;
+pub const EncounterStruct = encounter.EncounterStruct;
+pub const EncounterVariant = encounter.EncounterVariant;
+pub const EncounterCreature = encounter.EncounterCreature;
+pub const GeometryPoint = encounter.GeometryPoint;
+pub const SpawnPoint = encounter.SpawnPoint;
+
+pub const waypoint = @import("waypoint.zig");
+pub const UtwFile = waypoint.UtwFile;
+pub const WaypointStruct = waypoint.WaypointStruct;
+pub const WaypointVariant = waypoint.WaypointVariant;
+
+pub const trigger = @import("trigger.zig");
+pub const UttFile = trigger.UttFile;
+pub const TriggerStruct = trigger.TriggerStruct;
+pub const TriggerVariant = trigger.TriggerVariant;
+pub const TriggerPoint = trigger.TriggerPoint;
+
+pub const door_placeable = @import("door_placeable.zig");
+pub const UtdFile = door_placeable.UtdFile;
+pub const DoorStruct = door_placeable.DoorStruct;
+pub const UtpFile = door_placeable.UtpFile;
+pub const PlaceableStruct = door_placeable.PlaceableStruct;
+pub const PlaceableInventoryItem = door_placeable.PlaceableInventoryItem;
+pub const SituatedVariant = door_placeable.SituatedVariant;
+
+pub const ifo = @import("ifo.zig");
+pub const IfoFile = ifo.IfoFile;
+pub const IfoStruct = ifo.IfoStruct;
+pub const IfoVariant = ifo.IfoVariant;
+pub const IfoAreaEntry = ifo.AreaEntry;
+pub const IfoHakEntry = ifo.HakEntry;
+pub const IfoCacheEntry = ifo.CacheEntry;
+pub const IfoToken = ifo.Token;
+pub const IfoTurdEntry = ifo.TurdEntry;
+pub const IfoPersonalRep = ifo.PersonalRep;
+pub const IfoMapData = ifo.MapData;
 
 const Io = std.Io;
