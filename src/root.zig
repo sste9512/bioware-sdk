@@ -108,6 +108,12 @@ pub const PlaceableStruct = door_placeable.PlaceableStruct;
 pub const PlaceableInventoryItem = door_placeable.PlaceableInventoryItem;
 pub const SituatedVariant = door_placeable.SituatedVariant;
 
+pub const sound = @import("sound.zig");
+pub const UtsFile = sound.UtsFile;
+pub const SoundStruct = sound.SoundStruct;
+pub const SoundVariant = sound.SoundVariant;
+pub const SoundWaveEntry = sound.SoundEntry;
+
 pub const ifo = @import("ifo.zig");
 pub const IfoFile = ifo.IfoFile;
 pub const IfoStruct = ifo.IfoStruct;
