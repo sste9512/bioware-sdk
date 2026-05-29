@@ -142,6 +142,7 @@ pub const KeyFile = struct {
             return std.Io.Dir.readFileAlloc(std.Io.Dir.cwd(), io, joined_path, std.heap.page_allocator, .unlimited);
         }
 
+        // Convenience method to immediately link to associated BIF file
         pub fn bifFromEntry(entry: *const BifEntry, base_chitin_path: []const u8, io: std.Io) !BifFile {
             const bytes = try entry.readBytes(base_chitin_path, io);
             errdefer {
@@ -340,25 +341,25 @@ pub const KeyFile = struct {
         std.log.info("  Build year: {d}, Build day: {d}", .{ self.build_year, self.build_day });
 
         std.log.info("BIF Table:", .{});
-        std.log.info("┌────────────┬────────────┬────────────┬────────────────────────────────┐", .{});
-        std.log.info("│ Index      │ File Size  │ Drives     │ Filename                       │", .{});
-        std.log.info("├────────────┼────────────┼────────────┼────────────────────────────────┤", .{});
+        std.log.info("+------------+------------+------------+--------------------------------+", .{});
+        std.log.info("| Index      | File Size  | Drives     | Filename                       |", .{});
+        std.log.info("+------------+------------+------------+--------------------------------+", .{});
         for (self.bif_entries.items, 0..) |e, i| {
-            std.log.info("│ {d:>10} │ {d:>10} │ {d:>10} │ {s:<30} │", .{ i, e.file_size, e.drives, e.filename });
+            std.log.info("| {d:>10} | {d:>10} | {d:>10} | {s:<30} |", .{ i, e.file_size, e.drives, e.filename });
         }
-        std.log.info("└────────────┴────────────┴────────────┴────────────────────────────────┘", .{});
+        std.log.info("+------------+------------+------------+--------------------------------+", .{});
 
         std.log.info("Key Table:", .{});
-        std.log.info("┌────────────┬──────────────────┬────────────┬────────────┬────────────┐", .{});
-        std.log.info("│ Index      │ ResRef           │ Type       │ BIF Index  │ Var Index  │", .{});
-        std.log.info("├────────────┼──────────────────┼────────────┼────────────┼────────────┤", .{});
+        std.log.info("+------------+------------------+------------+------------+------------+", .{});
+        std.log.info("| Index      | ResRef           | Type       | BIF Index  | Var Index  |", .{});
+        std.log.info("+------------+------------------+------------+------------+------------+", .{});
         for (self.key_entries.items, 0..) |e, i| {
             var num_buf: [12]u8 = undefined;
             const type_str: []const u8 = std.enums.tagName(ResType, e.res_type) orelse
                 std.fmt.bufPrint(&num_buf, "0x{x:0>4}", .{@intFromEnum(e.res_type)}) catch "?";
-            std.log.info("│ {d:>10} │ {s:<16} │ {s:>10} │ {d:>10} │ {d:>10} │", .{ i, e.resRefSlice(), type_str, e.bifIndex(), e.varIndex() });
+            std.log.info("| {d:>10} | {s:<16} | {s:>10} | {d:>10} | {d:>10} |", .{ i, e.resRefSlice(), type_str, e.bifIndex(), e.varIndex() });
         }
-        std.log.info("└────────────┴──────────────────┴────────────┴────────────┴────────────┘", .{});
+        std.log.info("+------------+------------------+------------+------------+------------+", .{});
     }
 };
 
@@ -513,22 +514,22 @@ pub const BifFile = struct {
     }
 
     pub fn dumpResourceTable(self: *const BifFile, writer: *std.Io.Writer) !void {
-        try writer.print("┌────────────┬────────────┬────────────┬────────────┐\n", .{});
-        try writer.print("│ Index      │ ID         │ Type       │ Size       │\n", .{});
-        try writer.print("├────────────┼────────────┼────────────┼────────────┤\n", .{});
+        try writer.print("+------------+------------+------------+------------+\n", .{});
+        try writer.print("| Index      | ID         | Type       | Size       |\n", .{});
+        try writer.print("+------------+------------+------------+------------+\n", .{});
         for (self.resources.items, 0..) |r, i| {
             // ResType is non-exhaustive; @tagName would panic on unknown values.
             var num_buf: [12]u8 = undefined;
             const type_str: []const u8 = std.enums.tagName(ResType, r.res_type) orelse
                 std.fmt.bufPrint(&num_buf, "0x{x:0>4}", .{@intFromEnum(r.res_type)}) catch "?";
-            try writer.print("│ {d:>10} │ {d:>10} │ {s:>10} │ {d:>10} │\n", .{
+            try writer.print("| {d:>10} | {d:>10} | {s:>10} | {d:>10} |\n", .{
                 i,
                 r.id,
                 type_str,
                 r.data.len,
             });
         }
-        try writer.print("└────────────┴────────────┴────────────┴────────────┘\n", .{});
+        try writer.print("+------------+------------+------------+------------+\n", .{});
         try writer.print("Total resources: {d}\n", .{self.resources.items.len});
     }
 };

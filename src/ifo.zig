@@ -17,6 +17,11 @@
 //!     Mod_GVar_List, Creature List) are neither read nor written.
 //!
 //! Memory: IfoFile owns an ArenaAllocator. Call deinit() once to free all.
+//!
+//! An IFO file is a module InFOrmation file. Every NWN module (.MOD or .NWM) or savegame (.SAV) is an Encapsulated Resource File (ERF) that contains an IFO file called "module.ifo".
+//! The IFO file type is in BioWare's Generic File Format (GFF) and it is assumed that the reader has some familiarity with GFF.
+//!  Many of the GFF Fields in an IFO file make references to 2-Dimensional Array (2DA) files, so it is also assumed that the reader is familiar with the 2DA format.
+//! In the GFF header of an IFO file, the FileType value is "IFO ".
 
 const std = @import("std");
 const gff = @import("gff.zig");

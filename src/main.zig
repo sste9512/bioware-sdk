@@ -8,24 +8,18 @@ const BifFile = bioware_sdk.BifFile;
 const KeyFile = bioware_sdk.KeyFile;
 const ErfFile = bioware_sdk.ErfFile;
 const ErfFileType = bioware_sdk.ErfFileType;
+const RimFile = bioware_sdk.RimFile;
 
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
 
-    //  var gff_file = try gff.GffFile.init(std.heap.page_allocator);
-
-    //  defer gff_file.deinit();
-    //
-
-    //  const result =  try gff_file.parse("data/characters/human_male.gff");
-
-    //  _ = result;
-    //
-    const kotor_root_path = "/home/steveo/snap/steam/common/.local/share/Steam/steamapps/common/swkotor";
+    //const kotor_root_path = "/home/steveo/snap/steam/common/.local/share/Steam/steamapps/common/swkotor";
+    const kotor_root_path = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\swkotor";
     //const kotor_root_path_fix = "/home/steveo/snap/steam/common/.local/share/Steam/steamapps/common/swkotor/";
     const kotor_data_path = try std.fs.path.join(std.heap.page_allocator, &.{ kotor_root_path, "/data" });
     defer std.heap.page_allocator.free(kotor_data_path);
 
+    //Key File Intiialisation
     const key_path = try std.fs.path.join(std.heap.page_allocator, &.{ kotor_root_path, "/chitin.key" });
     defer std.heap.page_allocator.free(key_path);
 
@@ -35,32 +29,57 @@ pub fn main(init: std.process.Init) !void {
     const keyBytes = try readFileBytes(std.heap.page_allocator, key_path, io);
     try keyfile.parse(keyBytes);
 
-    keyfile.dumpInfo();
+    //keyfile.dumpInfo();
 
+    //BIF File Initialisation
     var bif_file_from_entry = try keyfile.bif_entries.items[2].bifFromEntry(kotor_root_path, io);
     var bif_2 = try keyfile.bif_entries.items[3].bifFromEntry(kotor_root_path, io);
     defer bif_file_from_entry.deinit();
     defer bif_2.deinit();
 
+    const rim_path = try std.fs.path.join(std.heap.page_allocator, &.{"C:\\Program Files (x86)\\Steam\\steamapps\\common\\swkotor\\rims\\mainmenu.rim"});
+    defer std.heap.page_allocator.free(rim_path);
+
+    const rimBytes = try readFileBytes(std.heap.page_allocator, rim_path, io);
+    defer std.heap.page_allocator.free(rimBytes);
+
+    //ERF File Initialisation
     const erf_path = try std.fs.path.join(std.heap.page_allocator, &.{ kotor_root_path, "/TexturePacks/swpc_tex_gui.erf" });
     defer std.heap.page_allocator.free(erf_path);
 
     const erfBytes = try readFileBytes(std.heap.page_allocator, erf_path, io);
     defer std.heap.page_allocator.free(erfBytes);
 
+    const ifo_path = try std.fs.path.join(std.heap.page_allocator, &.{ kotor_root_path, "\\saves\\000002 - Game1\\SAVEGAME.sav" });
+    defer std.heap.page_allocator.free(ifo_path);
+
+    const ifoBytes = try readFileBytes(std.heap.page_allocator, ifo_path, io);
+    defer std.heap.page_allocator.free(ifoBytes);
+
     var erf = ErfFile.init(std.heap.page_allocator, .ERF);
     defer erf.deinit();
+    var ifo = ErfFile.init(std.heap.page_allocator, .SAV);
+    defer ifo.deinit();
+    var rim = RimFile.init(std.heap.page_allocator);
+    defer rim.deinit();
 
     try erf.parse(erfBytes);
+    try ifo.parse(ifoBytes);
+    rim.parse(rimBytes) catch |err| {
+        std.log.err("Failed to parse RIM file: {s}", .{@errorName(err)});
+        return err;
+    };
 
-    erf.dumpInfo();
+    //erf.dumpInfo();
+    // ifo.dumpInfo();
+    rim.dumpInfo();
 
-    var stdout_buf1: [4096]u8 = undefined;
-    var stdout1 = std.Io.File.stdout().writer(io, &stdout_buf1);
-    try bif_file_from_entry.dumpResourceTable(&stdout1.interface);
-    try bif_2.dumpResourceTable(&stdout1.interface);
+    // var stdout_buf1: [4096]u8 = undefined;
+    // var stdout1 = std.Io.File.stdout().writer(io, &stdout_buf1);
+    // try bif_file_from_entry.dumpResourceTable(&stdout1.interface);
+    // try bif_2.dumpResourceTable(&stdout1.interface);
 
-    try stdout1.interface.flush();
+    // try stdout1.interface.flush();
 }
 
 fn readFileBytes(allocator: std.mem.Allocator, path: []const u8, io: std.Io) ![]u8 {

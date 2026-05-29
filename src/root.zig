@@ -26,6 +26,11 @@ pub const ErfFileType = erf.ErfFileType;
 pub const ErfLanguage = erf.Language;
 pub const LocalizedString = erf.LocalizedString;
 
+pub const rim = @import("rim.zig");
+pub const RimFile = rim.RimFile;
+pub const RimKeyEntry = rim.RimKeyEntry;
+pub const RimError = rim.RimError;
+
 pub const area = @import("area.zig");
 pub const AreFile = area.AreFile;
 pub const GitFile = area.GitFile;
@@ -113,6 +118,13 @@ pub const UtsFile = sound.UtsFile;
 pub const SoundStruct = sound.SoundStruct;
 pub const SoundVariant = sound.SoundVariant;
 pub const SoundWaveEntry = sound.SoundEntry;
+
+pub const fac = @import("fac.zig");
+pub const FacFile = fac.FacFile;
+pub const Faction = fac.Faction;
+pub const FactionReputation = fac.Reputation;
+pub const FactionStanding = fac.Standing;
+pub const FACTION_NO_PARENT = fac.NO_PARENT;
 
 pub const ifo = @import("ifo.zig");
 pub const IfoFile = ifo.IfoFile;
