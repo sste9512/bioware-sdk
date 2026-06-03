@@ -11,8 +11,8 @@
 //!
 //! Memory: UtsFile owns an ArenaAllocator. Call deinit() once to free all.
 
-const std    = @import("std");
-const gff    = @import("gff.zig");
+const std = @import("std");
+const gff = @import("gff.zig");
 const common = @import("common_gff.zig");
 
 pub const FILE_TYPE = "UTS ";
@@ -53,7 +53,7 @@ inline fn optByte(g: *const gff.GffFile, s: *const gff.Struct, l: []const u8, d:
     const f = g.getField(s, l) orelse return d;
     return switch (f.value) {
         .byte => |v| v,
-        else  => error.WrongFieldType,
+        else => error.WrongFieldType,
     };
 }
 
@@ -61,7 +61,7 @@ inline fn optByteOrNull(g: *const gff.GffFile, s: *const gff.Struct, l: []const 
     const f = g.getField(s, l) orelse return null;
     return switch (f.value) {
         .byte => |v| v,
-        else  => error.WrongFieldType,
+        else => error.WrongFieldType,
     };
 }
 
@@ -69,7 +69,7 @@ inline fn optDword(g: *const gff.GffFile, s: *const gff.Struct, l: []const u8, d
     const f = g.getField(s, l) orelse return d;
     return switch (f.value) {
         .dword => |v| v,
-        else   => error.WrongFieldType,
+        else => error.WrongFieldType,
     };
 }
 
@@ -77,7 +77,7 @@ inline fn optFloat(g: *const gff.GffFile, s: *const gff.Struct, l: []const u8, d
     const f = g.getField(s, l) orelse return d;
     return switch (f.value) {
         .float => |v| v,
-        else   => error.WrongFieldType,
+        else => error.WrongFieldType,
     };
 }
 
@@ -85,7 +85,7 @@ inline fn optResRef(g: *const gff.GffFile, s: *const gff.Struct, l: []const u8) 
     const f = g.getField(s, l) orelse return .{ .len = 0, .data = [_]u8{0} ** 16 };
     return switch (f.value) {
         .res_ref => |v| v,
-        else     => error.WrongFieldType,
+        else => error.WrongFieldType,
     };
 }
 
@@ -93,7 +93,7 @@ fn optExoStringDupe(a: std.mem.Allocator, g: *const gff.GffFile, s: *const gff.S
     const f = g.getField(s, l) orelse return a.dupe(u8, &.{});
     return switch (f.value) {
         .exo_string => |v| a.dupe(u8, v),
-        else        => error.WrongFieldType,
+        else => error.WrongFieldType,
     };
 }
 
@@ -101,7 +101,7 @@ fn optExoStringDupeOrNull(a: std.mem.Allocator, g: *const gff.GffFile, s: *const
     const f = g.getField(s, l) orelse return null;
     return switch (f.value) {
         .exo_string => |v| try a.dupe(u8, v),
-        else        => error.WrongFieldType,
+        else => error.WrongFieldType,
     };
 }
 
@@ -140,7 +140,7 @@ fn parseSoundsList(arena: std.mem.Allocator, g: *const gff.GffFile, s: *const gf
     const f = g.getField(s, "Sounds") orelse return arena.alloc(SoundEntry, 0);
     const arr = switch (f.value) {
         .list => |v| v,
-        else  => return error.WrongFieldType,
+        else => return error.WrongFieldType,
     };
     const out = try arena.alloc(SoundEntry, arr.len);
     for (arr, 0..) |idx, i| {
@@ -170,118 +170,118 @@ fn writeSoundsList(g: *gff.GffFile, parent_idx: u32, sounds: []const SoundEntry)
 pub const SoundStruct = struct {
     // ---- §2.1 common --------------------------------------------------------
 
-    active:           u8  = 0,
-    continuous:       u8  = 0,
-    elevation:        f32 = 0,
+    active: u8 = 0,
+    continuous: u8 = 0,
+    elevation: f32 = 0,
     /// Bitmask: bit N = play during hour N. Bit 0 = 00h00, bit 14 = 14h00, etc.
-    hours:            u32 = 0,
+    hours: u32 = 0,
     /// Milliseconds between waves (ignored when Continuous=1).
-    interval:         u32 = 0,
+    interval: u32 = 0,
     /// ±millisecond jitter added to Interval each play (ignored when Continuous=1).
-    interval_vrtn:    u32 = 0,
+    interval_vrtn: u32 = 0,
     /// Toolset palette name; not shown in game.
-    loc_name:         gff.ExoLocString = .{ .string_ref = 0xFFFF_FFFF, .substrings = .empty },
-    looping:          u8  = 0,
-    max_distance:     f32 = 0,
-    min_distance:     f32 = 0,
+    loc_name: gff.ExoLocString = .{ .string_ref = 0xFFFF_FFFF, .substrings = .empty },
+    looping: u8 = 0,
+    max_distance: f32 = 0,
+    min_distance: f32 = 0,
     /// Octave pitch jitter per play (0–1.0). Ignored when Continuous=1.
-    pitch_variation:  f32 = 0,
-    positional:       u8  = 0,
+    pitch_variation: f32 = 0,
+    positional: u8 = 0,
     /// Index into prioritygroups.2da.
-    priority:         u8  = 0,
+    priority: u8 = 0,
     /// 1 = random wave order; 0 = sequential. Ignored when Continuous=1.
-    random:           u8  = 0,
+    random: u8 = 0,
     /// 1 = XYZ jitters by RandomRangeX/Y each play. Ignored when Positional=0.
-    random_position:  u8  = 0,
-    random_range_x:   f32 = 0,
-    random_range_y:   f32 = 0,
+    random_position: u8 = 0,
+    random_range_x: f32 = 0,
+    random_range_y: f32 = 0,
     /// Ordered list of WAV ResRefs to play.
-    sounds:           []SoundEntry = &.{},
+    sounds: []SoundEntry = &.{},
     /// Tag (≤32 characters).
-    tag:              []u8 = &.{},
+    tag: []u8 = &.{},
     /// Blueprint: same as UTS filename. Instance: source blueprint ResRef.
     template_res_ref: gff.ResRef = .{ .len = 0, .data = [_]u8{0} ** 16 },
     /// 0=time-specific (use Hours), 1=Day, 2=Night, 3=Always.
-    times:            u8  = 0,
+    times: u8 = 0,
     /// 0 (min) to 127 (full).
-    volume:           u8  = 0,
+    volume: u8 = 0,
     /// ±volume jitter per play, 0–127. Ignored when Continuous=1.
-    volume_vrtn:      u8  = 0,
+    volume_vrtn: u8 = 0,
 
     // ---- §2.2 blueprint-only ------------------------------------------------
 
     /// Module designer comment. null = field absent.
-    comment:    ?[]u8 = null,
+    comment: ?[]u8 = null,
     /// Palette node ID. null = field absent.
-    palette_id: ?u8   = null,
+    palette_id: ?u8 = null,
 
     // ---- §2.3 instance-only -------------------------------------------------
 
     /// 0 = manually placed, 1 = auto-generated ambient. null = blueprint.
-    generated_type: ?u8  = null,
-    x_position:     ?f32 = null,
-    y_position:     ?f32 = null,
-    z_position:     ?f32 = null,
+    generated_type: ?u8 = null,
+    x_position: ?f32 = null,
+    y_position: ?f32 = null,
+    z_position: ?f32 = null,
 
     // ---- §2.4 game-instance-only --------------------------------------------
 
-    action_list: []common.Action   = &.{},
+    action_list: []common.Action = &.{},
     /// Game engine object ID. INVALID_OBJECT_ID = 0x7f000000. null = not a game instance.
-    object_id:   ?u32              = null,
-    var_table:   []common.Variable = &.{},
+    object_id: ?u32 = null,
+    var_table: []common.Variable = &.{},
 
     // -------------------------------------------------------------------------
 
     /// Decode a SoundStruct from a GFF struct node.
     /// All strings and loc-strings are deep-copied into `arena`.
     pub fn fromGffStruct(
-        arena:   std.mem.Allocator,
-        g:       *const gff.GffFile,
-        s:       *const gff.Struct,
+        arena: std.mem.Allocator,
+        g: *const gff.GffFile,
+        s: *const gff.Struct,
         variant: SoundVariant,
     ) Error!SoundStruct {
         var out: SoundStruct = .{};
 
         // §2.1 common
-        out.active          = try optByte(g, s,  "Active",          0);
-        out.continuous      = try optByte(g, s,  "Continuous",      0);
-        out.elevation       = try optFloat(g, s, "Elevation",       0);
-        out.hours           = try optDword(g, s, "Hours",           0);
-        out.interval        = try optDword(g, s, "Interval",        0);
-        out.interval_vrtn   = try optDword(g, s, "IntervalVrtn",    0);
-        out.loc_name        = try optExoLocDupe(arena, g, s, "LocName");
-        out.looping         = try optByte(g, s,  "Looping",         0);
-        out.max_distance    = try optFloat(g, s, "MaxDistance",     0);
-        out.min_distance    = try optFloat(g, s, "MinDistance",     0);
-        out.pitch_variation = try optFloat(g, s, "PitchVariation",  0);
-        out.positional      = try optByte(g, s,  "Positional",      0);
-        out.priority        = try optByte(g, s,  "Priority",        0);
-        out.random          = try optByte(g, s,  "Random",          0);
-        out.random_position = try optByte(g, s,  "RandomPosition",  0);
-        out.random_range_x  = try optFloat(g, s, "RandomRangeX",   0);
-        out.random_range_y  = try optFloat(g, s, "RandomRangeY",   0);
-        out.sounds          = try parseSoundsList(arena, g, s);
-        out.tag             = try optExoStringDupe(arena, g, s, "Tag");
+        out.active = try optByte(g, s, "Active", 0);
+        out.continuous = try optByte(g, s, "Continuous", 0);
+        out.elevation = try optFloat(g, s, "Elevation", 0);
+        out.hours = try optDword(g, s, "Hours", 0);
+        out.interval = try optDword(g, s, "Interval", 0);
+        out.interval_vrtn = try optDword(g, s, "IntervalVrtn", 0);
+        out.loc_name = try optExoLocDupe(arena, g, s, "LocName");
+        out.looping = try optByte(g, s, "Looping", 0);
+        out.max_distance = try optFloat(g, s, "MaxDistance", 0);
+        out.min_distance = try optFloat(g, s, "MinDistance", 0);
+        out.pitch_variation = try optFloat(g, s, "PitchVariation", 0);
+        out.positional = try optByte(g, s, "Positional", 0);
+        out.priority = try optByte(g, s, "Priority", 0);
+        out.random = try optByte(g, s, "Random", 0);
+        out.random_position = try optByte(g, s, "RandomPosition", 0);
+        out.random_range_x = try optFloat(g, s, "RandomRangeX", 0);
+        out.random_range_y = try optFloat(g, s, "RandomRangeY", 0);
+        out.sounds = try parseSoundsList(arena, g, s);
+        out.tag = try optExoStringDupe(arena, g, s, "Tag");
         out.template_res_ref = try optResRef(g, s, "TemplateResRef");
-        out.times           = try optByte(g, s,  "Times",           0);
-        out.volume          = try optByte(g, s,  "Volume",          0);
-        out.volume_vrtn     = try optByte(g, s,  "VolumeVrtn",      0);
+        out.times = try optByte(g, s, "Times", 0);
+        out.volume = try optByte(g, s, "Volume", 0);
+        out.volume_vrtn = try optByte(g, s, "VolumeVrtn", 0);
 
         switch (variant) {
             .blueprint => {
-                out.comment    = try optExoStringDupeOrNull(arena, g, s, "Comment");
+                out.comment = try optExoStringDupeOrNull(arena, g, s, "Comment");
                 out.palette_id = try optByteOrNull(g, s, "PaletteID");
             },
             .instance, .game_instance => {
-                out.generated_type = try optByte(g, s,  "GeneratedType", 0);
-                out.x_position     = try optFloat(g, s, "XPosition",     0);
-                out.y_position     = try optFloat(g, s, "YPosition",     0);
-                out.z_position     = try optFloat(g, s, "ZPosition",     0);
+                out.generated_type = try optByte(g, s, "GeneratedType", 0);
+                out.x_position = try optFloat(g, s, "XPosition", 0);
+                out.y_position = try optFloat(g, s, "YPosition", 0);
+                out.z_position = try optFloat(g, s, "ZPosition", 0);
 
                 if (variant == .game_instance) {
                     out.action_list = try common.parseActionList(arena, g, s);
-                    out.object_id   = try optDword(g, s, "ObjectId", 0x7f000000);
-                    out.var_table   = try common.parseVarTable(arena, g, s);
+                    out.object_id = try optDword(g, s, "ObjectId", 0x7f000000);
+                    out.var_table = try common.parseVarTable(arena, g, s);
                 }
             },
         }
@@ -290,50 +290,50 @@ pub const SoundStruct = struct {
 
     /// Emit all fields into the GFF struct at `struct_idx` inside `g`.
     pub fn writeIntoGff(
-        self:       *const SoundStruct,
-        g:          *gff.GffFile,
+        self: *const SoundStruct,
+        g: *gff.GffFile,
         struct_idx: u32,
-        variant:    SoundVariant,
+        variant: SoundVariant,
     ) !void {
         // §2.1 common
-        try g.addFieldToStruct(struct_idx, "Active",         .{ .byte  = self.active });
-        try g.addFieldToStruct(struct_idx, "Continuous",     .{ .byte  = self.continuous });
-        try g.addFieldToStruct(struct_idx, "Elevation",      .{ .float = self.elevation });
-        try g.addFieldToStruct(struct_idx, "Hours",          .{ .dword = self.hours });
-        try g.addFieldToStruct(struct_idx, "Interval",       .{ .dword = self.interval });
-        try g.addFieldToStruct(struct_idx, "IntervalVrtn",   .{ .dword = self.interval_vrtn });
-        try g.addFieldToStruct(struct_idx, "LocName",        .{
+        try g.addFieldToStruct(struct_idx, "Active", .{ .byte = self.active });
+        try g.addFieldToStruct(struct_idx, "Continuous", .{ .byte = self.continuous });
+        try g.addFieldToStruct(struct_idx, "Elevation", .{ .float = self.elevation });
+        try g.addFieldToStruct(struct_idx, "Hours", .{ .dword = self.hours });
+        try g.addFieldToStruct(struct_idx, "Interval", .{ .dword = self.interval });
+        try g.addFieldToStruct(struct_idx, "IntervalVrtn", .{ .dword = self.interval_vrtn });
+        try g.addFieldToStruct(struct_idx, "LocName", .{
             .exo_loc_string = try cloneExoLoc(g.allocator, self.loc_name),
         });
-        try g.addFieldToStruct(struct_idx, "Looping",        .{ .byte  = self.looping });
-        try g.addFieldToStruct(struct_idx, "MaxDistance",    .{ .float = self.max_distance });
-        try g.addFieldToStruct(struct_idx, "MinDistance",    .{ .float = self.min_distance });
+        try g.addFieldToStruct(struct_idx, "Looping", .{ .byte = self.looping });
+        try g.addFieldToStruct(struct_idx, "MaxDistance", .{ .float = self.max_distance });
+        try g.addFieldToStruct(struct_idx, "MinDistance", .{ .float = self.min_distance });
         try g.addFieldToStruct(struct_idx, "PitchVariation", .{ .float = self.pitch_variation });
-        try g.addFieldToStruct(struct_idx, "Positional",     .{ .byte  = self.positional });
-        try g.addFieldToStruct(struct_idx, "Priority",       .{ .byte  = self.priority });
-        try g.addFieldToStruct(struct_idx, "Random",         .{ .byte  = self.random });
-        try g.addFieldToStruct(struct_idx, "RandomPosition", .{ .byte  = self.random_position });
-        try g.addFieldToStruct(struct_idx, "RandomRangeX",   .{ .float = self.random_range_x });
-        try g.addFieldToStruct(struct_idx, "RandomRangeY",   .{ .float = self.random_range_y });
+        try g.addFieldToStruct(struct_idx, "Positional", .{ .byte = self.positional });
+        try g.addFieldToStruct(struct_idx, "Priority", .{ .byte = self.priority });
+        try g.addFieldToStruct(struct_idx, "Random", .{ .byte = self.random });
+        try g.addFieldToStruct(struct_idx, "RandomPosition", .{ .byte = self.random_position });
+        try g.addFieldToStruct(struct_idx, "RandomRangeX", .{ .float = self.random_range_x });
+        try g.addFieldToStruct(struct_idx, "RandomRangeY", .{ .float = self.random_range_y });
         try writeSoundsList(g, struct_idx, self.sounds);
-        try g.addFieldToStruct(struct_idx, "Tag",            .{ .exo_string = try g.allocator.dupe(u8, self.tag) });
+        try g.addFieldToStruct(struct_idx, "Tag", .{ .exo_string = try g.allocator.dupe(u8, self.tag) });
         try g.addFieldToStruct(struct_idx, "TemplateResRef", .{ .res_ref = self.template_res_ref });
-        try g.addFieldToStruct(struct_idx, "Times",          .{ .byte  = self.times });
-        try g.addFieldToStruct(struct_idx, "Volume",         .{ .byte  = self.volume });
-        try g.addFieldToStruct(struct_idx, "VolumeVrtn",     .{ .byte  = self.volume_vrtn });
+        try g.addFieldToStruct(struct_idx, "Times", .{ .byte = self.times });
+        try g.addFieldToStruct(struct_idx, "Volume", .{ .byte = self.volume });
+        try g.addFieldToStruct(struct_idx, "VolumeVrtn", .{ .byte = self.volume_vrtn });
 
         switch (variant) {
             .blueprint => {
                 if (self.comment) |c|
-                    try g.addFieldToStruct(struct_idx, "Comment",   .{ .exo_string = try g.allocator.dupe(u8, c) });
+                    try g.addFieldToStruct(struct_idx, "Comment", .{ .exo_string = try g.allocator.dupe(u8, c) });
                 if (self.palette_id) |v|
                     try g.addFieldToStruct(struct_idx, "PaletteID", .{ .byte = v });
             },
             .instance, .game_instance => {
-                try g.addFieldToStruct(struct_idx, "GeneratedType", .{ .byte  = self.generated_type orelse 0 });
-                try g.addFieldToStruct(struct_idx, "XPosition",     .{ .float = self.x_position orelse 0 });
-                try g.addFieldToStruct(struct_idx, "YPosition",     .{ .float = self.y_position orelse 0 });
-                try g.addFieldToStruct(struct_idx, "ZPosition",     .{ .float = self.z_position orelse 0 });
+                try g.addFieldToStruct(struct_idx, "GeneratedType", .{ .byte = self.generated_type orelse 0 });
+                try g.addFieldToStruct(struct_idx, "XPosition", .{ .float = self.x_position orelse 0 });
+                try g.addFieldToStruct(struct_idx, "YPosition", .{ .float = self.y_position orelse 0 });
+                try g.addFieldToStruct(struct_idx, "ZPosition", .{ .float = self.z_position orelse 0 });
 
                 if (variant == .game_instance) {
                     try common.writeActionList(g, struct_idx, self.action_list);
@@ -433,26 +433,26 @@ test "UTS common scalar fields round-trip" {
     defer uts.deinit();
 
     const a = uts.arena.allocator();
-    uts.sound.active          = 1;
-    uts.sound.continuous      = 0;
-    uts.sound.looping         = 1;
-    uts.sound.random          = 1;
-    uts.sound.positional      = 1;
-    uts.sound.priority        = 3;
-    uts.sound.times           = 3;
-    uts.sound.volume          = 80;
-    uts.sound.volume_vrtn     = 10;
-    uts.sound.elevation       = 2.5;
-    uts.sound.max_distance    = 20.0;
-    uts.sound.min_distance    = 5.0;
+    uts.sound.active = 1;
+    uts.sound.continuous = 0;
+    uts.sound.looping = 1;
+    uts.sound.random = 1;
+    uts.sound.positional = 1;
+    uts.sound.priority = 3;
+    uts.sound.times = 3;
+    uts.sound.volume = 80;
+    uts.sound.volume_vrtn = 10;
+    uts.sound.elevation = 2.5;
+    uts.sound.max_distance = 20.0;
+    uts.sound.min_distance = 5.0;
     uts.sound.pitch_variation = 0.25;
-    uts.sound.interval        = 1000;
-    uts.sound.interval_vrtn   = 200;
-    uts.sound.hours           = 0b0000_1111_1111_0000; // hours 4–11
+    uts.sound.interval = 1000;
+    uts.sound.interval_vrtn = 200;
+    uts.sound.hours = 0b0000_1111_1111_0000; // hours 4–11
     uts.sound.random_position = 1;
-    uts.sound.random_range_x  = 3.0;
-    uts.sound.random_range_y  = 4.0;
-    uts.sound.tag             = try a.dupe(u8, "SND_Ambience01");
+    uts.sound.random_range_x = 3.0;
+    uts.sound.random_range_y = 4.0;
+    uts.sound.tag = try a.dupe(u8, "SND_Ambience01");
     uts.sound.template_res_ref = gff.ResRef.fromSlice("snd_ambience01");
 
     const bytes = try uts.serialize(gpa);
@@ -462,22 +462,22 @@ test "UTS common scalar fields round-trip" {
     defer uts2.deinit();
 
     const s = &uts2.sound;
-    try t.expectEqual(@as(u8, 1),    s.active);
-    try t.expectEqual(@as(u8, 1),    s.looping);
-    try t.expectEqual(@as(u8, 1),    s.random);
-    try t.expectEqual(@as(u8, 1),    s.positional);
-    try t.expectEqual(@as(u8, 3),    s.priority);
-    try t.expectEqual(@as(u8, 3),    s.times);
-    try t.expectEqual(@as(u8, 80),   s.volume);
-    try t.expectEqual(@as(u8, 10),   s.volume_vrtn);
-    try t.expectApproxEqAbs(@as(f32, 2.5),  s.elevation,       0.0001);
-    try t.expectApproxEqAbs(@as(f32, 20.0), s.max_distance,    0.0001);
-    try t.expectApproxEqAbs(@as(f32, 5.0),  s.min_distance,    0.0001);
+    try t.expectEqual(@as(u8, 1), s.active);
+    try t.expectEqual(@as(u8, 1), s.looping);
+    try t.expectEqual(@as(u8, 1), s.random);
+    try t.expectEqual(@as(u8, 1), s.positional);
+    try t.expectEqual(@as(u8, 3), s.priority);
+    try t.expectEqual(@as(u8, 3), s.times);
+    try t.expectEqual(@as(u8, 80), s.volume);
+    try t.expectEqual(@as(u8, 10), s.volume_vrtn);
+    try t.expectApproxEqAbs(@as(f32, 2.5), s.elevation, 0.0001);
+    try t.expectApproxEqAbs(@as(f32, 20.0), s.max_distance, 0.0001);
+    try t.expectApproxEqAbs(@as(f32, 5.0), s.min_distance, 0.0001);
     try t.expectApproxEqAbs(@as(f32, 0.25), s.pitch_variation, 0.0001);
     try t.expectEqual(@as(u32, 1000), s.interval);
-    try t.expectEqual(@as(u32, 200),  s.interval_vrtn);
+    try t.expectEqual(@as(u32, 200), s.interval_vrtn);
     try t.expectEqual(@as(u32, 0b0000_1111_1111_0000), s.hours);
-    try t.expectEqual(@as(u8, 1),    s.random_position);
+    try t.expectEqual(@as(u8, 1), s.random_position);
     try t.expectApproxEqAbs(@as(f32, 3.0), s.random_range_x, 0.0001);
     try t.expectApproxEqAbs(@as(f32, 4.0), s.random_range_y, 0.0001);
     try t.expectEqualStrings("SND_Ambience01", s.tag);
@@ -505,7 +505,7 @@ test "UTS sounds wave list round-trip" {
     try t.expectEqual(@as(usize, 3), uts2.sound.sounds.len);
     try t.expectEqualStrings("amb_birds01", uts2.sound.sounds[0].res_ref.slice());
     try t.expectEqualStrings("amb_birds02", uts2.sound.sounds[1].res_ref.slice());
-    try t.expectEqualStrings("amb_wind01",  uts2.sound.sounds[2].res_ref.slice());
+    try t.expectEqualStrings("amb_wind01", uts2.sound.sounds[2].res_ref.slice());
 }
 
 test "UTS blueprint-only fields round-trip" {
@@ -514,7 +514,7 @@ test "UTS blueprint-only fields round-trip" {
     defer uts.deinit();
 
     const a = uts.arena.allocator();
-    uts.sound.comment    = try a.dupe(u8, "Exterior ambient loop");
+    uts.sound.comment = try a.dupe(u8, "Exterior ambient loop");
     uts.sound.palette_id = 7;
 
     const bytes = try uts.serialize(gpa);
@@ -536,7 +536,7 @@ test "UTS LocName round-trip" {
     uts.sound.loc_name.string_ref = 100;
     try uts.sound.loc_name.substrings.append(a, .{
         .string_id = 0,
-        .text      = try a.dupe(u8, "Forest Ambience"),
+        .text = try a.dupe(u8, "Forest Ambience"),
     });
 
     const bytes = try uts.serialize(gpa);
@@ -561,18 +561,18 @@ test "SoundStruct instance variant round-trip" {
     const a = arena.allocator();
 
     var s: SoundStruct = .{};
-    s.active          = 1;
-    s.looping         = 1;
-    s.positional      = 1;
-    s.volume          = 100;
-    s.max_distance    = 15.0;
-    s.min_distance    = 2.0;
-    s.tag             = try a.dupe(u8, "SND_Waterfall");
+    s.active = 1;
+    s.looping = 1;
+    s.positional = 1;
+    s.volume = 100;
+    s.max_distance = 15.0;
+    s.min_distance = 2.0;
+    s.tag = try a.dupe(u8, "SND_Waterfall");
     s.template_res_ref = gff.ResRef.fromSlice("snd_waterfall");
-    s.generated_type  = 0;
-    s.x_position      = 12.5;
-    s.y_position      = 8.0;
-    s.z_position      = 0.0;
+    s.generated_type = 0;
+    s.x_position = 12.5;
+    s.y_position = 8.0;
+    s.z_position = 0.0;
 
     const entries = try a.alloc(SoundEntry, 1);
     entries[0] = .{ .res_ref = gff.ResRef.fromSlice("waterfall01") };
@@ -584,18 +584,21 @@ test "SoundStruct instance variant round-trip" {
     var arena2 = std.heap.ArenaAllocator.init(gpa);
     defer arena2.deinit();
     const parsed = try SoundStruct.fromGffStruct(
-        arena2.allocator(), &g, &g.structs.items[sidx], .instance,
+        arena2.allocator(),
+        &g,
+        &g.structs.items[sidx],
+        .instance,
     );
 
-    try t.expectEqual(@as(u8, 1),   parsed.active);
-    try t.expectEqual(@as(u8, 1),   parsed.looping);
+    try t.expectEqual(@as(u8, 1), parsed.active);
+    try t.expectEqual(@as(u8, 1), parsed.looping);
     try t.expectEqual(@as(u8, 100), parsed.volume);
     try t.expectEqualStrings("SND_Waterfall", parsed.tag);
     try t.expectEqualStrings("snd_waterfall", parsed.template_res_ref.slice());
-    try t.expectEqual(@as(?u8, 0),  parsed.generated_type);
+    try t.expectEqual(@as(?u8, 0), parsed.generated_type);
     try t.expectApproxEqAbs(@as(f32, 12.5), parsed.x_position.?, 0.0001);
-    try t.expectApproxEqAbs(@as(f32, 8.0),  parsed.y_position.?, 0.0001);
-    try t.expectApproxEqAbs(@as(f32, 0.0),  parsed.z_position.?, 0.0001);
+    try t.expectApproxEqAbs(@as(f32, 8.0), parsed.y_position.?, 0.0001);
+    try t.expectApproxEqAbs(@as(f32, 0.0), parsed.z_position.?, 0.0001);
     try t.expectEqual(@as(usize, 1), parsed.sounds.len);
     try t.expectEqualStrings("waterfall01", parsed.sounds[0].res_ref.slice());
     // Blueprint-only fields absent
@@ -614,13 +617,13 @@ test "SoundStruct game_instance variant round-trip" {
     const a = arena.allocator();
 
     var s: SoundStruct = .{};
-    s.active       = 1;
-    s.tag          = try a.dupe(u8, "SND_Save");
+    s.active = 1;
+    s.tag = try a.dupe(u8, "SND_Save");
     s.generated_type = 0;
-    s.x_position   = 1.0;
-    s.y_position   = 2.0;
-    s.z_position   = 0.0;
-    s.object_id    = 0x0000_0042;
+    s.x_position = 1.0;
+    s.y_position = 2.0;
+    s.z_position = 0.0;
+    s.object_id = 0x0000_0042;
 
     const vars = try a.alloc(common.Variable, 1);
     vars[0] = .{ .name = try a.dupe(u8, "PlayCount"), .value = .{ .int_val = 5 } };
@@ -632,13 +635,16 @@ test "SoundStruct game_instance variant round-trip" {
     var arena2 = std.heap.ArenaAllocator.init(gpa);
     defer arena2.deinit();
     const parsed = try SoundStruct.fromGffStruct(
-        arena2.allocator(), &g, &g.structs.items[sidx], .game_instance,
+        arena2.allocator(),
+        &g,
+        &g.structs.items[sidx],
+        .game_instance,
     );
 
     try t.expectEqual(@as(?u32, 0x42), parsed.object_id);
-    try t.expectEqual(@as(usize, 1),   parsed.var_table.len);
+    try t.expectEqual(@as(usize, 1), parsed.var_table.len);
     try t.expectEqualStrings("PlayCount", parsed.var_table[0].name);
-    try t.expectEqual(@as(i32, 5),     parsed.var_table[0].value.int_val);
+    try t.expectEqual(@as(i32, 5), parsed.var_table[0].value.int_val);
 }
 
 test "UTS byte-exact double serialize" {
@@ -647,19 +653,19 @@ test "UTS byte-exact double serialize" {
     defer uts.deinit();
 
     const a = uts.arena.allocator();
-    uts.sound.active          = 1;
-    uts.sound.looping         = 1;
-    uts.sound.positional      = 0;
-    uts.sound.priority        = 2;
-    uts.sound.times           = 3;
-    uts.sound.volume          = 90;
-    uts.sound.max_distance    = 40.0;
-    uts.sound.min_distance    = 1.0;
-    uts.sound.interval        = 500;
-    uts.sound.tag             = try a.dupe(u8, "SND_Rain");
+    uts.sound.active = 1;
+    uts.sound.looping = 1;
+    uts.sound.positional = 0;
+    uts.sound.priority = 2;
+    uts.sound.times = 3;
+    uts.sound.volume = 90;
+    uts.sound.max_distance = 40.0;
+    uts.sound.min_distance = 1.0;
+    uts.sound.interval = 500;
+    uts.sound.tag = try a.dupe(u8, "SND_Rain");
     uts.sound.template_res_ref = gff.ResRef.fromSlice("snd_rain");
-    uts.sound.comment         = try a.dupe(u8, "Rain loop");
-    uts.sound.palette_id      = 1;
+    uts.sound.comment = try a.dupe(u8, "Rain loop");
+    uts.sound.palette_id = 1;
 
     const entries = try a.alloc(SoundEntry, 2);
     entries[0] = .{ .res_ref = gff.ResRef.fromSlice("rain_heavy") };

@@ -138,4 +138,29 @@ pub const IfoTurdEntry = ifo.TurdEntry;
 pub const IfoPersonalRep = ifo.PersonalRep;
 pub const IfoMapData = ifo.MapData;
 
+pub const resource_grouping = @import("services/resource_grouping.zig");
+pub const ResourceId = resource_grouping.ResourceId;
+pub const ResourceOrigin = resource_grouping.Origin;
+
+pub const tga = @import("image_formats/tga.zig");
+pub const TgaFile = tga.TgaFile;
+pub const TgaHeader = tga.TgaHeader;
+pub const TgaImageType = tga.ImageType;
+pub const TgaError = tga.TgaError;
+
+pub const dds = @import("image_formats/dds.zig");
+pub const DdsFile = dds.DdsFile;
+pub const DdsHeader = dds.DdsHeader;
+pub const DdsPixelFormat = dds.DdsPixelFormat;
+pub const DdsDxt10Header = dds.DdsDxt10Header;
+pub const DdsPixelFormatEnum = dds.PixelFormat;
+pub const DdsError = dds.DdsError;
+
+pub const tpc = @import("image_formats/tpc.zig");
+pub const TpcFile = tpc.TpcFile;
+pub const TpcHeader = tpc.TpcHeader;
+pub const TpcEncoding = tpc.Encoding;
+pub const TpcCompression = tpc.Compression;
+pub const TpcError = tpc.TpcError;
+
 const Io = std.Io;
