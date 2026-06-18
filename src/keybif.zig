@@ -209,6 +209,38 @@ pub const KeyFile = struct {
         self.key_entries.deinit(self.allocator);
     }
 
+    pub fn scanForResourceByName(self: *KeyFile, name: []const u8, resType: ResType) !?*const anyopaque {
+        var key: KeyEntry = undefined;
+        for (self.key_entries.items) |*entry| {
+            if (std.mem.eql(u8, entry.resRefSlice(), name) and entry.res_type == resType) {
+                key = entry.*;
+                break;
+            }
+        }
+        const bif = key.getBiffForResId(self);
+        const bifFile = try bif.bifFromEntry();
+        for (bifFile.resources.items) |*entry| {
+            if (std.mem.eql(u8, entry.res_type, key.res_type) and std.mem.eql(u8, entry.res_ref, key.resRefSlice())) {
+                switch (entry.res_type) {
+                    .are => {
+                        // TODO: Load ARE resource
+                    },
+                    .git => {
+                        // TODO: Load GIT resource
+                    },
+                    .ut => {
+                        // TODO: Load UT* resource
+                    },
+                    else => {
+                        // TODO: Load other resource types
+                    },
+                }
+            }
+        }
+
+        return null;
+    }
+
     /// Parse a KEY file from its raw bytes.
     /// On error, call `deinit` to free any partial allocations.
     pub fn parse(self: *KeyFile, data: []const u8) !void {
@@ -393,6 +425,72 @@ pub const BifFile = struct {
         pub fn index(self: *const VarResource) u32 {
             return self.id & 0x000F_FFFF;
         }
+
+        /// Short file-extension form of the resource type, e.g. `"uti"`,
+        /// `"2da"`, `"mdl"`. Returns `"unknown"` for `ResType` values that
+        /// are not in the enum (this is a non-exhaustive enum). Use
+        /// `descriptiveFileType` for a human-readable long-form name.
+        pub fn fileExtension(self: *const VarResource) []const u8 {
+            return self.res_type.toString();
+        }
+
+        /// Full / descriptive name of the resource file type, e.g.
+        /// `"Item Blueprint (UTI)"`, `"2D Array (2DA)"`. Falls back to the
+        /// short extension or a hex value for unknown types.
+        pub fn descriptiveFileType(self: *const VarResource) []const u8 {
+            return switch (self.res_type) {
+                .bmp => "Windows Bitmap (BMP)",
+                .tga => "Targa Image (TGA)",
+                .wav => "Wave Audio (WAV)",
+                .plt => "Packed Layered Texture (PLT)",
+                .ini => "INI Config (INI)",
+                .txt => "Plain Text (TXT)",
+                .mdl => "Model (MDL)",
+                .nss => "Script Source (NSS)",
+                .ncs => "Compiled Script (NCS)",
+                .are => "Area (ARE)",
+                .set => "Tile Set (SET)",
+                .ifo => "Module Info (IFO)",
+                .bic => "Character (BIC)",
+                .wok => "Walkmesh (WOK)",
+                .@"2da" => "2D Array (2DA)",
+                .tlk => "Talk Table (TLK)",
+                .txi => "Texture Info (TXI)",
+                .git => "Area Instance Layout (GIT)",
+                .uti => "Item Blueprint (UTI)",
+                .utc => "Creature Blueprint (UTC)",
+                .dlg => "Dialog (DLG)",
+                .itp => "Item Palette (ITP)",
+                .utt => "Trigger Blueprint (UTT)",
+                .dds => "DirectDraw Surface (DDS)",
+                .uts => "Sound Blueprint (UTS)",
+                .ltr => "Letter Combo Probabilities (LTR)",
+                .gff => "Generic File Format (GFF)",
+                .fac => "Faction (FAC)",
+                .ute => "Encounter Blueprint (UTE)",
+                .utd => "Door Blueprint (UTD)",
+                .utp => "Placeable Blueprint (UTP)",
+                .dft => "Default Values (DFT)",
+                .gic => "Area Comments (GIC)",
+                .gui => "GUI Layout (GUI)",
+                .utm => "Store Blueprint (UTM)",
+                .dwk => "Door Walkmesh (DWK)",
+                .pwk => "Placeable Walkmesh (PWK)",
+                .jrl => "Journal (JRL)",
+                .utw => "Waypoint Blueprint (UTW)",
+                .ssf => "Sound Set File (SSF)",
+                .ndb => "Script Debugger Info (NDB)",
+                .ptm => "Plot Manager (PTM)",
+                .ptt => "Plot Wizard (PTT)",
+                .mdx => "Model Extension (MDX)",
+                .invalid => "Invalid",
+                _ => "Unknown",
+            };
+        }
+
+        pub fn bytesAsSlice(self: *const VarResource) ?[]const u8 {
+            return self.data;
+        }
     };
 
     pub fn init(allocator: std.mem.Allocator) BifFile {
@@ -511,6 +609,45 @@ pub const BifFile = struct {
     pub fn getResourceByIndex(self: *const BifFile, index: u32) ?[]const u8 {
         if (index >= self.resources.items.len) return null;
         return self.resources.items[index].data;
+    }
+
+    /// Look up the `VarResource` that a given `KeyFile.KeyEntry` points at.
+    ///
+    /// The KEY entry's `res_id` encodes `(bif_index << 20) | var_index`. This
+    /// function uses only the low 20 bits (the var index inside *this* BIF) and
+    /// also validates the resource type matches. Caller is responsible for
+    /// ensuring `entry` actually belongs to this BIF (i.e. its `bifIndex()`
+    /// matches the File Table slot that loaded this archive).
+    ///
+    /// Returns a pointer into `self.resources` (valid until the list is
+    /// mutated), or `null` if no matching entry exists.
+    pub fn getByKeyEntry(
+        self: *const BifFile,
+        entry: *const KeyFile.KeyEntry,
+    ) ?*const VarResource {
+        const want_index = entry.varIndex();
+        for (self.resources.items) |*r| {
+            if (r.index() == want_index and r.res_type == entry.res_type) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /// Convenience wrapper: resolve `res_ref` + `res_type` against `key_file`
+    /// first, then fetch the corresponding `VarResource` from this BIF.
+    ///
+    /// Returns `null` if either the KEY lookup fails or the BIF has no resource
+    /// at the requested var index. The match is case-sensitive on `res_ref` (in
+    /// line with `KeyFile.findEntry`).
+    pub fn getByKeyName(
+        self: *const BifFile,
+        key_file: *const KeyFile,
+        res_ref: []const u8,
+        res_type: ResType,
+    ) ?*const VarResource {
+        const entry = key_file.findEntry(res_ref, res_type) orelse return null;
+        return self.getByKeyEntry(entry);
     }
 
     pub fn dumpResourceTable(self: *const BifFile, writer: *std.Io.Writer) !void {
@@ -681,6 +818,74 @@ test "KEY findEntry" {
     try std.testing.expect(key.findEntry("helmet", .uti) != null);
     try std.testing.expect(key.findEntry("armor", .utc) == null);
     try std.testing.expect(key.findEntry("shield", .uti) == null);
+}
+
+test "BIF getByKeyEntry / getByKeyName resolve via KeyFile" {
+    const gpa = std.testing.allocator;
+
+    // Build a KEY with two entries that point into BIF #0.
+    var key = KeyFile.init(gpa);
+    defer key.deinit();
+
+    try key.bif_entries.append(gpa, .{
+        .file_size = 0,
+        .drives = 1,
+        .filename = try gpa.dupe(u8, "data\\test.bif"),
+    });
+
+    var ref_a = [_]u8{0} ** 16;
+    @memcpy(ref_a[0..5], "armor");
+    var ref_b = [_]u8{0} ** 16;
+    @memcpy(ref_b[0..6], "helmet");
+
+    try key.key_entries.append(gpa, .{ .res_ref = ref_a, .res_type = .uti, .res_id = (0 << 20) | 0 });
+    try key.key_entries.append(gpa, .{ .res_ref = ref_b, .res_type = .uti, .res_id = (0 << 20) | 2 });
+
+    // Build the matching BIF with three resources; only var indices 0 and 2
+    // are referenced by the KEY entries above. Var index 1 is a decoy.
+    var bif = BifFile.init(gpa);
+    defer bif.deinit();
+    try bif.resources.append(gpa, .{ .id = 0, .res_type = .uti, .data = try gpa.dupe(u8, "ARMOR_DATA") });
+    try bif.resources.append(gpa, .{ .id = 1, .res_type = .uti, .data = try gpa.dupe(u8, "DECOY") });
+    try bif.resources.append(gpa, .{ .id = 2, .res_type = .uti, .data = try gpa.dupe(u8, "HELMET_DATA") });
+
+    // By KeyEntry
+    const armor_entry = key.findEntry("armor", .uti).?;
+    const armor_res = bif.getByKeyEntry(armor_entry).?;
+    try std.testing.expectEqualSlices(u8, "ARMOR_DATA", armor_res.data);
+
+    // By name
+    const helmet_res = bif.getByKeyName(&key, "helmet", .uti).?;
+    try std.testing.expectEqualSlices(u8, "HELMET_DATA", helmet_res.data);
+
+    // Missing name
+    try std.testing.expect(bif.getByKeyName(&key, "shield", .uti) == null);
+
+    // Wrong type still returns null even though the name exists.
+    try std.testing.expect(bif.getByKeyName(&key, "armor", .utc) == null);
+}
+
+test "VarResource fileExtension / descriptiveFileType" {
+    const gpa = std.testing.allocator;
+
+    var bif = BifFile.init(gpa);
+    defer bif.deinit();
+    try bif.resources.append(gpa, .{ .id = 0, .res_type = .uti, .data = try gpa.dupe(u8, "x") });
+    try bif.resources.append(gpa, .{ .id = 1, .res_type = .@"2da", .data = try gpa.dupe(u8, "y") });
+    try bif.resources.append(gpa, .{
+        .id = 2,
+        .res_type = @enumFromInt(0x1234), // unknown enum tag
+        .data = try gpa.dupe(u8, "z"),
+    });
+
+    try std.testing.expectEqualStrings("uti", bif.resources.items[0].fileExtension());
+    try std.testing.expectEqualStrings("Item Blueprint (UTI)", bif.resources.items[0].descriptiveFileType());
+
+    try std.testing.expectEqualStrings("2da", bif.resources.items[1].fileExtension());
+    try std.testing.expectEqualStrings("2D Array (2DA)", bif.resources.items[1].descriptiveFileType());
+
+    try std.testing.expectEqualStrings("unknown", bif.resources.items[2].fileExtension());
+    try std.testing.expectEqualStrings("Unknown", bif.resources.items[2].descriptiveFileType());
 }
 
 test "invalid magic returns error" {

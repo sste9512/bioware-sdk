@@ -149,6 +149,25 @@ pub const AreaTile = struct {
         try g.addFieldToStruct(struct_idx, "Tile_SrcLight1", .{ .byte = self.src_light_1 });
         try g.addFieldToStruct(struct_idx, "Tile_SrcLight2", .{ .byte = self.src_light_2 });
     }
+
+    /// Pretty-print a single tile's fields as `key=value` pairs.
+    pub fn print(self: AreaTile, w: *std.Io.Writer) !void {
+        try w.print(
+            "AreaTile{{ id={d}, height={d}, orientation={d}, anim_loops=[{d},{d},{d}], main_light=[{d},{d}], src_light=[{d},{d}] }}",
+            .{
+                self.id,
+                self.height,
+                self.orientation,
+                self.anim_loop_1,
+                self.anim_loop_2,
+                self.anim_loop_3,
+                self.main_light_1,
+                self.main_light_2,
+                self.src_light_1,
+                self.src_light_2,
+            },
+        );
+    }
 };
 
 // ============================================================================
@@ -338,7 +357,17 @@ pub const AreFile = struct {
     }
 
     // -------- BGR color helpers -------------------------------------------
-    pub const Rgb = struct { r: u8, g: u8, b: u8 };
+    pub const Rgb = struct {
+        r: u8,
+        g: u8,
+        b: u8,
+
+        pub fn print(self: Rgb, w: *std.Io.Writer) !void {
+            try w.print("rgb({d},{d},{d}) #{x:0>2}{x:0>2}{x:0>2}", .{
+                self.r, self.g, self.b, self.r, self.g, self.b,
+            });
+        }
+    };
 
     /// Decode a BGR-packed DWORD into separate R/G/B bytes. On disk the bytes
     /// appear as `R G B 0`, so as a little-endian u32 the R is in the low byte.
@@ -351,6 +380,69 @@ pub const AreFile = struct {
     }
     pub fn bgrFromRgb(r: u8, g: u8, b: u8) u32 {
         return @as(u32, r) | (@as(u32, g) << 8) | (@as(u32, b) << 16);
+    }
+
+    /// Pretty-print the entire ARE header to `w`, one field per line.
+    /// Tile_List is summarised (count + first few tiles); pass `verbose=true`
+    /// to dump every tile.
+    pub fn print(self: *const AreFile, w: *std.Io.Writer, verbose: bool) !void {
+        try w.print("AreFile {{\n", .{});
+        try w.print("  res_ref            = \"{s}\"\n", .{self.res_ref.slice()});
+        try w.print("  tag                = \"{s}\"\n", .{self.tag});
+        try w.writeAll("  name               = ");
+        try printExoLoc(w, self.name);
+        try w.writeByte('\n');
+        try w.print("  comments           = \"{s}\"\n", .{self.comments});
+        try w.print("  version            = {d}\n", .{self.version});
+        try w.print("  id                 = {d}\n", .{self.id});
+        try w.print("  creator_id         = {d}\n", .{self.creator_id});
+        try w.print("  flags              = 0x{x:0>8} (interior={}, underground={}, natural={})\n", .{
+            self.flags,
+            (self.flags & FLAG_INTERIOR) != 0,
+            (self.flags & FLAG_UNDERGROUND) != 0,
+            (self.flags & FLAG_NATURAL) != 0,
+        });
+        try w.print("  size (W x H)       = {d} x {d}\n", .{ self.width, self.height });
+        try w.print("  tile_set           = \"{s}\"\n", .{self.tile_set.slice()});
+        try w.print("  day_night_cycle    = {d}, is_night = {d}, lighting_scheme = {d}\n", .{
+            self.day_night_cycle, self.is_night, self.lighting_scheme,
+        });
+        try w.print("  load_screen_id     = {d}\n", .{self.load_screen_id});
+        try w.print("  no_rest            = {d}, player_vs_player = {d}\n", .{ self.no_rest, self.player_vs_player });
+        try w.print("  sky_box            = {d}, shadow_opacity = {d}\n", .{ self.sky_box, self.shadow_opacity });
+        try w.print("  mod_listen / spot  = {d} / {d}\n", .{ self.mod_listen_check, self.mod_spot_check });
+        try w.print("  wind_power         = {d}\n", .{self.wind_power});
+        try w.print("  weather chances    = lightning={d}, rain={d}, snow={d}\n", .{
+            self.chance_lightning, self.chance_rain, self.chance_snow,
+        });
+        try w.writeAll("  sun                = ");
+        try printBgrColor(w, "ambient", self.sun_ambient_color);
+        try w.writeAll(", ");
+        try printBgrColor(w, "diffuse", self.sun_diffuse_color);
+        try w.writeAll(", ");
+        try printBgrColor(w, "fog", self.sun_fog_color);
+        try w.print(", fog_amount={d}, shadows={d}\n", .{ self.sun_fog_amount, self.sun_shadows });
+        try w.writeAll("  moon               = ");
+        try printBgrColor(w, "ambient", self.moon_ambient_color);
+        try w.writeAll(", ");
+        try printBgrColor(w, "diffuse", self.moon_diffuse_color);
+        try w.writeAll(", ");
+        try printBgrColor(w, "fog", self.moon_fog_color);
+        try w.print(", fog_amount={d}, shadows={d}\n", .{ self.moon_fog_amount, self.moon_shadows });
+        try w.print("  on_enter           = \"{s}\"\n", .{self.on_enter.slice()});
+        try w.print("  on_exit            = \"{s}\"\n", .{self.on_exit.slice()});
+        try w.print("  on_heartbeat       = \"{s}\"\n", .{self.on_heartbeat.slice()});
+        try w.print("  on_user_defined    = \"{s}\"\n", .{self.on_user_defined.slice()});
+        try w.print("  tile_list          = {d} tile(s)\n", .{self.tile_list.len});
+        const limit: usize = if (verbose) self.tile_list.len else @min(self.tile_list.len, 8);
+        for (self.tile_list[0..limit], 0..) |tile, i| {
+            try w.print("    [{d}] ", .{i});
+            try tile.print(w);
+            try w.writeByte('\n');
+        }
+        if (!verbose and self.tile_list.len > limit)
+            try w.print("    ... ({d} more)\n", .{self.tile_list.len - limit});
+        try w.writeAll("}\n");
     }
 };
 
@@ -397,6 +489,19 @@ pub const AreaProperties = struct {
         try g.addFieldToStruct(struct_idx, "MusicDay", .{ .int = self.music_day });
         try g.addFieldToStruct(struct_idx, "MusicDelay", .{ .int = self.music_delay });
         try g.addFieldToStruct(struct_idx, "MusicNight", .{ .int = self.music_night });
+    }
+
+    pub fn print(self: AreaProperties, w: *std.Io.Writer) !void {
+        try w.print("AreaProperties {{\n", .{});
+        try w.print("  music   day={d}, night={d}, battle={d}, delay={d}\n", .{
+            self.music_day, self.music_night, self.music_battle, self.music_delay,
+        });
+        try w.print("  ambient day={d} (vol {d}), night={d} (vol {d})\n", .{
+            self.ambient_snd_day,   self.ambient_snd_day_vol,
+            self.ambient_snd_night, self.ambient_snd_nit_vol,
+        });
+        try w.print("  env_audio={d}\n", .{self.env_audio});
+        try w.writeAll("}\n");
     }
 };
 
@@ -552,14 +657,113 @@ pub const GitFile = struct {
     pub fn underlying(self: *const GitFile) ?*const gff.GffFile {
         return if (self.gff_storage) |*x| x else null;
     }
+
+    /// Pretty-print GIT contents: instance-list counts plus AreaProperties.
+    /// Per-instance fields can be inspected via `getStruct(handle)`.
+    pub fn print(self: *const GitFile, w: *std.Io.Writer) !void {
+        try w.print("GitFile {{\n", .{});
+        try w.writeAll("  ");
+        try self.area_properties.print(w);
+        try w.print("  creatures   = {d}\n", .{self.creatures.len});
+        try w.print("  doors       = {d}\n", .{self.doors.len});
+        try w.print("  encounters  = {d}\n", .{self.encounters.len});
+        try w.print("  items       = {d}\n", .{self.items.len});
+        try w.print("  placeables  = {d}\n", .{self.placeables.len});
+        try w.print("  sounds      = {d}\n", .{self.sounds.len});
+        try w.print("  stores      = {d}\n", .{self.stores.len});
+        try w.print("  triggers    = {d}\n", .{self.triggers.len});
+        try w.print("  waypoints   = {d}\n", .{self.waypoints.len});
+        if (self.area_effects) |v| try w.print("  area_effects    = {d}\n", .{v.len});
+        if (self.var_table) |v| try w.print("  var_table       = {d}\n", .{v.len});
+        if (self.current_weather) |wx| {
+            const name: []const u8 = switch (wx) {
+                .clear => "clear",
+                .rain => "rain",
+                .snow => "snow",
+                _ => "unknown",
+            };
+            try w.print("  current_weather = {s} ({d})\n", .{ name, @intFromEnum(wx) });
+        }
+        if (self.weather_started) |b| try w.print("  weather_started = {d}\n", .{b});
+        try w.writeAll("}\n");
+    }
+
+    /// Dump every instance handle across all lists, resolving the `Tag` and
+    /// `ResRef` fields from the underlying GFF where available. `limit_per_list`
+    /// caps the number of entries shown per list (0 = unlimited).
+    pub fn printInstances(self: *const GitFile, w: *std.Io.Writer, limit_per_list: usize) !void {
+        try w.writeAll("GitFile instances {\n");
+        try printInstanceList(w, self, "creatures", self.creatures, limit_per_list);
+        try printInstanceList(w, self, "doors", self.doors, limit_per_list);
+        try printInstanceList(w, self, "encounters", self.encounters, limit_per_list);
+        try printInstanceList(w, self, "items", self.items, limit_per_list);
+        try printInstanceList(w, self, "placeables", self.placeables, limit_per_list);
+        try printInstanceList(w, self, "sounds", self.sounds, limit_per_list);
+        try printInstanceList(w, self, "stores", self.stores, limit_per_list);
+        try printInstanceList(w, self, "triggers", self.triggers, limit_per_list);
+        try printInstanceList(w, self, "waypoints", self.waypoints, limit_per_list);
+        if (self.area_effects) |v|
+            try printInstanceList(w, self, "area_effects", v, limit_per_list);
+        if (self.var_table) |v|
+            try printInstanceList(w, self, "var_table", v, limit_per_list);
+        try w.writeAll("}\n");
+    }
 };
+
+fn printInstanceList(
+    w: *std.Io.Writer,
+    git: *const GitFile,
+    label: []const u8,
+    handles: []const InstanceHandle,
+    limit_per_list: usize,
+) !void {
+    try w.print("  {s:<13} ({d}):\n", .{ label, handles.len });
+    const limit: usize = if (limit_per_list == 0) handles.len else @min(handles.len, limit_per_list);
+    for (handles[0..limit], 0..) |h, i| {
+        try w.print("    [{d}] handle={d}", .{ i, h });
+        if (git.getStruct(h)) |s| {
+            try w.print(", type_id={d}", .{s.type_id});
+            const ul = git.underlying().?;
+            if (ul.getField(s, "Tag")) |f| switch (f.value) {
+                .exo_string => |str| try w.print(", Tag=\"{s}\"", .{str}),
+                else => {},
+            };
+            if (ul.getField(s, "ResRef")) |f| switch (f.value) {
+                .res_ref => |rr| try w.print(", ResRef=\"{s}\"", .{rr.slice()}),
+                else => {},
+            };
+            if (ul.getField(s, "TemplateResRef")) |f| switch (f.value) {
+                .res_ref => |rr| try w.print(", TemplateResRef=\"{s}\"", .{rr.slice()}),
+                else => {},
+            };
+        } else {
+            try w.writeAll(", <unresolved>");
+        }
+        try w.writeByte('\n');
+    }
+    if (handles.len > limit)
+        try w.print("    ... ({d} more)\n", .{handles.len - limit});
+}
 
 // ============================================================================
 // GIC file
 // ============================================================================
 
 pub const Comment = struct {
+    /// Maximum body length emitted by `print` before ellipsis truncation.
+    pub const PRINT_TRUNCATE: usize = 80;
+
     comment: []u8 = &.{},
+
+    pub fn print(self: Comment, w: *std.Io.Writer) !void {
+        if (self.comment.len <= PRINT_TRUNCATE) {
+            try w.print("Comment{{ \"{s}\" }}", .{self.comment});
+        } else {
+            try w.print("Comment{{ \"{s}...\" ({d} bytes total) }}", .{
+                self.comment[0..PRINT_TRUNCATE], self.comment.len,
+            });
+        }
+    }
 };
 
 pub const GicFile = struct {
@@ -624,6 +828,22 @@ pub const GicFile = struct {
         try writeCommentList(alloc, &g, "WaypointList", self.waypoints);
 
         return g.serialize(alloc);
+    }
+
+    /// Pretty-print the GIC comment lists. `verbose=true` dumps every comment
+    /// body; otherwise only the count + first three are shown per list.
+    pub fn print(self: *const GicFile, w: *std.Io.Writer, verbose: bool) !void {
+        try w.print("GicFile {{\n", .{});
+        try printCommentList(w, "creatures", self.creatures, verbose);
+        try printCommentList(w, "doors", self.doors, verbose);
+        try printCommentList(w, "encounters", self.encounters, verbose);
+        try printCommentList(w, "items", self.items, verbose);
+        try printCommentList(w, "placeables", self.placeables, verbose);
+        try printCommentList(w, "sounds", self.sounds, verbose);
+        try printCommentList(w, "stores", self.stores, verbose);
+        try printCommentList(w, "triggers", self.triggers, verbose);
+        try printCommentList(w, "waypoints", self.waypoints, verbose);
+        try w.writeAll("}\n");
     }
 };
 
@@ -752,6 +972,39 @@ fn cloneFieldValue(
             break :blk .{ .list = out };
         },
     };
+}
+
+// ============================================================================
+// Pretty-print helpers (shared across structs)
+// ============================================================================
+
+fn printExoLoc(w: *std.Io.Writer, loc: gff.ExoLocString) !void {
+    try w.print("ExoLoc{{ ref={d}", .{loc.string_ref});
+    if (loc.substrings.items.len == 0) {
+        try w.writeAll(", <no substrings> }");
+        return;
+    }
+    try w.print(", {d} substring(s)", .{loc.substrings.items.len});
+    const first = loc.substrings.items[0];
+    try w.print(", first[id={d}]=\"{s}\"", .{ first.string_id, first.text });
+    try w.writeAll(" }");
+}
+
+fn printBgrColor(w: *std.Io.Writer, label: []const u8, v: u32) !void {
+    try w.print("{s}=", .{label});
+    try AreFile.rgbFromBgr(v).print(w);
+}
+
+fn printCommentList(w: *std.Io.Writer, label: []const u8, comments: []const Comment, verbose: bool) !void {
+    try w.print("  {s:<11} = {d} comment(s)\n", .{ label, comments.len });
+    const limit: usize = if (verbose) comments.len else @min(comments.len, 3);
+    for (comments[0..limit], 0..) |c, i| {
+        try w.print("    [{d}] ", .{i});
+        try c.print(w);
+        try w.writeByte('\n');
+    }
+    if (!verbose and comments.len > limit)
+        try w.print("    ... ({d} more)\n", .{comments.len - limit});
 }
 
 // ============================================================================
@@ -980,6 +1233,98 @@ test "wrong magic" {
 
     try t.expectError(error.InvalidFileType, GitFile.parse(gpa, are_bytes));
     try t.expectError(error.InvalidFileType, GicFile.parse(gpa, are_bytes));
+}
+
+test "pretty-print smoke (AreaTile / AreFile / AreaProperties / GitFile / Comment / GicFile)" {
+    const gpa = t.allocator;
+
+    var buf: [4096]u8 = undefined;
+    var aw = std.Io.Writer.fixed(&buf);
+
+    const tile: AreaTile = .{ .id = 42, .height = 1, .orientation = 2 };
+    try tile.print(&aw);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "id=42") != null);
+
+    var are = AreFile.init(gpa);
+    defer are.deinit();
+    are.width = 3;
+    are.height = 4;
+    are.flags = AreFile.FLAG_INTERIOR;
+    aw = std.Io.Writer.fixed(&buf);
+    try are.print(&aw, false);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "AreFile {") != null);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "interior=true") != null);
+
+    aw = std.Io.Writer.fixed(&buf);
+    const ap: AreaProperties = .{ .music_day = 7, .env_audio = 1 };
+    try ap.print(&aw);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "day=7") != null);
+
+    var git = GitFile.init(gpa);
+    defer git.deinit();
+    git.current_weather = .rain;
+    aw = std.Io.Writer.fixed(&buf);
+    try git.print(&aw);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "GitFile {") != null);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "current_weather = rain") != null);
+
+    const c: Comment = .{ .comment = @constCast("hello") };
+    aw = std.Io.Writer.fixed(&buf);
+    try c.print(&aw);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "hello") != null);
+
+    // Long-comment truncation
+    var long_buf: [256]u8 = undefined;
+    @memset(&long_buf, 'x');
+    const long: Comment = .{ .comment = &long_buf };
+    aw = std.Io.Writer.fixed(&buf);
+    try long.print(&aw);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "...") != null);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "256 bytes total") != null);
+
+    var gic = GicFile.init(gpa);
+    defer gic.deinit();
+    aw = std.Io.Writer.fixed(&buf);
+    try gic.print(&aw, false);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "GicFile {") != null);
+
+    // Rgb.print
+    aw = std.Io.Writer.fixed(&buf);
+    try (AreFile.Rgb{ .r = 255, .g = 128, .b = 64 }).print(&aw);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "rgb(255,128,64)") != null);
+    try t.expect(std.mem.indexOf(u8, aw.buffered(), "#ff8040") != null);
+}
+
+test "GitFile.printInstances resolves Tag from underlying GFF" {
+    const gpa = t.allocator;
+
+    var raw = try gff.GffFile.init(gpa, GitFile.FILE_TYPE.*);
+    defer raw.deinit();
+
+    const ap = try raw.addStruct(AreaProperties.STRUCT_ID);
+    try raw.addFieldToStruct(0, "AreaProperties", .{ .@"struct" = ap });
+
+    const c1 = try raw.addStruct(GitFile.StructIds.creature);
+    try raw.addFieldToStruct(c1, "Tag", .{ .exo_string = try gpa.dupe(u8, "goblin01") });
+    try raw.addFieldToStruct(c1, "TemplateResRef", .{ .res_ref = gff.ResRef.fromSlice("g_goblin") });
+    const creatures = try gpa.alloc(u32, 1);
+    creatures[0] = c1;
+    try raw.addFieldToStruct(0, "Creature List", .{ .list = creatures });
+
+    const bytes = try raw.serialize(gpa);
+    defer gpa.free(bytes);
+
+    var git = try GitFile.parse(gpa, bytes);
+    defer git.deinit();
+
+    var buf: [2048]u8 = undefined;
+    var aw = std.Io.Writer.fixed(&buf);
+    try git.printInstances(&aw, 0);
+
+    const out = aw.buffered();
+    try t.expect(std.mem.indexOf(u8, out, "creatures") != null);
+    try t.expect(std.mem.indexOf(u8, out, "Tag=\"goblin01\"") != null);
+    try t.expect(std.mem.indexOf(u8, out, "TemplateResRef=\"g_goblin\"") != null);
 }
 
 test "GIT missing AreaProperties" {
