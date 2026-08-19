@@ -59,7 +59,7 @@ inline fn optInt(g: *const gff.GffFile, s: *const gff.Struct, label: []const u8,
     };
 }
 inline fn optResRef(g: *const gff.GffFile, s: *const gff.Struct, label: []const u8) Error!gff.ResRef {
-    const f = g.getField(s, label) orelse return gff.ResRef{ .len = 0, .data = [_]u8{0} ** 16 };
+    const f = g.getField(s, label) orelse return gff.ResRef{ .len = 0, .data = [_]u8{0} * 16 };
     return switch (f.value) {
         .res_ref => |v| v,
         else => error.WrongFieldType,

@@ -193,6 +193,40 @@ pub const KeyFile = struct {
         }
     };
 
+    /// Iterator over KeyEntry items.
+    pub const KeyEntryIterator = struct {
+        entries: []const KeyEntry,
+        index: usize = 0,
+
+        pub fn next(self: *KeyEntryIterator) ?*const KeyEntry {
+            if (self.index >= self.entries.len) return null;
+            const entry = &self.entries[self.index];
+            self.index += 1;
+            return entry;
+        }
+
+        pub fn reset(self: *KeyEntryIterator) void {
+            self.index = 0;
+        }
+    };
+
+    /// Iterator over BifEntry items.
+    pub const BifEntryIterator = struct {
+        entries: []const BifEntry,
+        index: usize = 0,
+
+        pub fn next(self: *BifEntryIterator) ?*const BifEntry {
+            if (self.index >= self.entries.len) return null;
+            const entry = &self.entries[self.index];
+            self.index += 1;
+            return entry;
+        }
+
+        pub fn reset(self: *BifEntryIterator) void {
+            self.index = 0;
+        }
+    };
+
     pub fn init(allocator: std.mem.Allocator) KeyFile {
         return .{
             .allocator = allocator,
@@ -207,6 +241,24 @@ pub const KeyFile = struct {
         for (self.bif_entries.items) |e| self.allocator.free(e.filename);
         self.bif_entries.deinit(self.allocator);
         self.key_entries.deinit(self.allocator);
+    }
+
+    /// Returns an iterator over key entries.
+    /// var key_iter = key_file.keyIterator();
+    /// while (key_iter.next()) |entry| {
+    ///     // entry.resRefSlice(), entry.res_type, etc.
+    /// }
+    pub fn keyIterator(self: *const KeyFile) KeyEntryIterator {
+        return .{ .entries = self.key_entries.items };
+    }
+
+    /// Returns an iterator over BIF entries.
+    /// var bif_iter = key_file.bifIterator();
+    /// while (bif_iter.next()) |entry| {
+    ///     // entry.filename, entry.file_size, etc.
+    /// }
+    pub fn bifIterator(self: *const KeyFile) BifEntryIterator {
+        return .{ .entries = self.bif_entries.items };
     }
 
     pub fn scanForResourceByName(self: *KeyFile, name: []const u8, resType: ResType) !?*const anyopaque {
@@ -820,6 +872,66 @@ test "KEY findEntry" {
     try std.testing.expect(key.findEntry("shield", .uti) == null);
 }
 
+test "KEY keyIterator" {
+    const gpa = std.testing.allocator;
+
+    var key = KeyFile.init(gpa);
+    defer key.deinit();
+
+    var ref_a = [_]u8{0} ** 16;
+    @memcpy(ref_a[0..5], "sword");
+    var ref_b = [_]u8{0} ** 16;
+    @memcpy(ref_b[0..6], "shield");
+
+    try key.key_entries.append(gpa, .{ .res_ref = ref_a, .res_type = .uti, .res_id = 0 });
+    try key.key_entries.append(gpa, .{ .res_ref = ref_b, .res_type = .uti, .res_id = 1 });
+
+    var iter = key.keyIterator();
+    const first = iter.next().?;
+    try std.testing.expectEqualStrings("sword", first.resRefSlice());
+
+    const second = iter.next().?;
+    try std.testing.expectEqualStrings("shield", second.resRefSlice());
+
+    try std.testing.expect(iter.next() == null);
+
+    // Test reset
+    iter.reset();
+    try std.testing.expect(iter.next() != null);
+}
+
+test "KEY bifIterator" {
+    const gpa = std.testing.allocator;
+
+    var key = KeyFile.init(gpa);
+    defer key.deinit();
+
+    try key.bif_entries.append(gpa, .{
+        .file_size = 1000,
+        .drives = 1,
+        .filename = try gpa.dupe(u8, "data\\first.bif"),
+    });
+    try key.bif_entries.append(gpa, .{
+        .file_size = 2000,
+        .drives = 1,
+        .filename = try gpa.dupe(u8, "data\\second.bif"),
+    });
+
+    var iter = key.bifIterator();
+    const first = iter.next().?;
+    try std.testing.expectEqualStrings("data\\first.bif", first.filename);
+    try std.testing.expectEqual(@as(u32, 1000), first.file_size);
+
+    const second = iter.next().?;
+    try std.testing.expectEqualStrings("data\\second.bif", second.filename);
+
+    try std.testing.expect(iter.next() == null);
+
+    // Test reset
+    iter.reset();
+    try std.testing.expect(iter.next() != null);
+}
+
 test "BIF getByKeyEntry / getByKeyName resolve via KeyFile" {
     const gpa = std.testing.allocator;
 
@@ -902,4 +1014,33 @@ test "invalid magic returns error" {
     var bif = BifFile.init(gpa);
     defer bif.deinit();
     try std.testing.expectError(error.InvalidFileType, bif.parse(&buf));
+}
+
+fn readFileBytes(allocator: std.mem.Allocator, path: []const u8, io: std.Io) ![]u8 {
+    return std.Io.Dir.readFileAlloc(std.Io.Dir.cwd(), io, path, allocator, .unlimited);
+}
+
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    //const kotor_root_path = "/home/steveo/snap/steam/common/.local/share/Steam/steamapps/common/swkotor";
+    const kotor_root_path = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\swkotor";
+    //const kotor_root_path_fix = "/home/steveo/snap/steam/common/.local/share/Steam/steamapps/common/swkotor/";
+    const kotor_data_path = try std.fs.path.join(std.heap.page_allocator, &.{ kotor_root_path, "/data" });
+    defer std.heap.page_allocator.free(kotor_data_path);
+
+    //Key File Intiialisation
+    const key_path = try std.fs.path.join(std.heap.page_allocator, &.{ kotor_root_path, "/chitin.key" });
+    defer std.heap.page_allocator.free(key_path);
+
+    var keyfile = KeyFile.init(std.heap.page_allocator);
+    defer keyfile.deinit();
+
+    const keyBytes = try readFileBytes(std.heap.page_allocator, key_path, io);
+    try keyfile.parse(keyBytes);
+
+    //BIF File Initialisation
+    var bif_file_from_entry = try keyfile.bif_entries.items[2].bifFromEntry(kotor_root_path, io);
+    var bif_2 = try keyfile.bif_entries.items[3].bifFromEntry(kotor_root_path, io);
+    defer bif_file_from_entry.deinit();
+    defer bif_2.deinit();
 }

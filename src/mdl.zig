@@ -236,7 +236,7 @@ pub const Face = struct {
 
 /// One bone influence on a vertex (up to 4 per vertex per Aurora spec).
 pub const BoneWeight = struct {
-    name: [32]u8 = [_]u8{0} ** 32,
+    name: [32]u8 = [_]u8{0} * 32,
     weight: f32,
 
     pub fn setName(self: *BoneWeight, s: []const u8) void {

@@ -231,7 +231,7 @@ test "RIM parse: little-endian header fields" {
 
     // Minimal fake RIM header (20 bytes): entry_count=1 @ 12, off_key_list=20 @ 16.
     // We only test that parse reads header fields correctly — no valid key entries.
-    var buf = [_]u8{0} ** 20;
+    var buf = [_]u8{0} * 20;
     buf[12] = 1; // entry_count = 1
     buf[16] = 20; // off_key_list = 20
 
